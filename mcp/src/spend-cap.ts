@@ -24,11 +24,32 @@ interface SpendRecord {
  */
 export class SpendLedger {
   private readonly consumed = new Set<string>();
-  private readonly records: SpendRecord[] = [];
+  /**
+   * Time-windowed records for the per-day cap only. Pruned to the last DAY_MS on
+   * every check so this array cannot grow unbounded (a DoS vector). Records older
+   * than the daily window carry no per-day signal and are dropped.
+   */
+  private records: SpendRecord[] = [];
+  /**
+   * Running per-stream total. Lives outside `records` precisely so it survives
+   * record pruning — the per-stream cap is a lifetime total, not a windowed one.
+   * Updated on commit; never pruned.
+   */
+  private readonly streamTotals = new Map<string, number>();
 
   /** True if this mandate id has already been consumed (i.e. a replay). */
   isConsumed(mandateId: string): boolean {
     return this.consumed.has(mandateId);
+  }
+
+  /**
+   * Drop records older than the daily window. Bounds `records` growth: only
+   * spend from the last DAY_MS is retained (the per-day cap needs nothing older).
+   * The per-stream lifetime total is held separately in `streamTotals`.
+   */
+  private prune(now: number): void {
+    const cutoff = now - DAY_MS;
+    this.records = this.records.filter((r) => r.ts > cutoff);
   }
 
   private spentTodayOnStream(stream: string, now: number): number {
@@ -39,9 +60,7 @@ export class SpendLedger {
   }
 
   private spentTotalOnStream(stream: string): number {
-    return this.records
-      .filter((r) => r.stream === stream)
-      .reduce((sum, r) => sum + r.amount, 0);
+    return this.streamTotals.get(stream) ?? 0;
   }
 
   /**
@@ -51,6 +70,9 @@ export class SpendLedger {
    * @param now injectable clock (ms) for deterministic tests.
    */
   check(charge: Charge, caps: SpendCaps, now: number = Date.now()): CapResult {
+    // Bound the in-memory record set: prune anything outside the daily window.
+    this.prune(now);
+
     // Replay guard first: a consumed mandate is never re-spendable.
     if (this.consumed.has(charge.mandateId)) {
       return {
@@ -113,5 +135,10 @@ export class SpendLedger {
     }
     this.consumed.add(charge.mandateId);
     this.records.push({ ts: now, amount: charge.amount, stream: charge.stream });
+    // Maintain the lifetime per-stream total separately so it survives pruning.
+    this.streamTotals.set(
+      charge.stream,
+      (this.streamTotals.get(charge.stream) ?? 0) + charge.amount,
+    );
   }
 }

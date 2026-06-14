@@ -22,7 +22,9 @@ export class AuditLog {
     if (!entry.action || typeof entry.action !== "string") {
       throw new Error("audit append failed: missing action — failing closed");
     }
-    const stored: AuditEntry = { ...entry, ts: entry.ts ?? Date.now() };
+    // Freeze the entry so the append-only log is immutable: a stored decision
+    // can never be edited in place after the fact.
+    const stored: AuditEntry = Object.freeze({ ...entry, ts: entry.ts ?? Date.now() });
     this.entries.push(stored);
     return stored;
   }

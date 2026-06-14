@@ -30,20 +30,20 @@ const audit = new AuditLog();
 
 // ---- Zod schemas (input validation is itself a fail-closed gate) ----
 const mandateSchema = z.object({
-  mandateId: z.string().min(1),
-  subject: z.string().min(1),
+  mandateId: z.string().min(1).max(100),
+  subject: z.string().min(1).max(256),
   amount: z.number().positive(),
-  currency: z.string().min(1),
+  currency: z.string().min(1).max(10),
   expiresAt: z.number().int(),
-  issuerKeyId: z.string().min(1),
-  signature: z.string().min(1),
+  issuerKeyId: z.string().min(1).max(100),
+  signature: z.string().min(1).max(256),
 });
 
 const chargeSchema = z.object({
-  mandateId: z.string().min(1),
+  mandateId: z.string().min(1).max(100),
   amount: z.number().positive(),
-  currency: z.string().min(1),
-  stream: z.string().min(1),
+  currency: z.string().min(1).max(10),
+  stream: z.string().min(1).max(100),
 });
 
 const capsSchema = z.object({
