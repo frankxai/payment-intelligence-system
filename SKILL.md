@@ -33,7 +33,7 @@ Run `verify_mandate` on every proposed charge. **Verify in this order; the first
 
 Only a mandate that clears all four is `verified`. Everything else is rejected with a one-line reason.
 
-> v0.1 note: the signature check is a **placeholder** (HMAC over a shared dev secret), not a production crypto verification. This is fine for modeling the control flow; it is **not** fine for live funds. See the README banner.
+> v0.2 note: the signature check is now **real Ed25519 public-key verification** against an issuer keyring (see `mcp/src/signature.ts`) — a forged or tampered mandate fails genuine asymmetric crypto, and an unknown issuer fails closed. It is still **not** a full AP2 deployment (no key distribution, revocation, or settlement rail) and remains **UNAUDITED — not for live funds**. See the README banner.
 
 ## The check-a-cap decision
 

@@ -1,7 +1,7 @@
 /**
  * Shared types for the Payments MCP control surface.
  *
- * ⚠️ v0.1 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
+ * ⚠️ v0.2 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
  *
  * The defining invariant: this surface AUTHORIZES money, it never MOVES money.
  * There is no `transfer`/`pay`/`settle` type here, by design.
@@ -12,8 +12,9 @@ export type Currency = string;
 
 /**
  * An AP2-style mandate: cryptographically signed proof a human authorized THIS
- * purchase for THIS amount. In v0.1 the signature is a placeholder HMAC over a
- * shared dev secret — NOT production crypto.
+ * purchase for THIS amount. In v0.2 the signature is a real Ed25519 signature over
+ * the canonical payload, verified against the issuer's public key (see signature.ts).
+ * It is NOT yet a full AP2 deployment (no key distribution / revocation).
  */
 export interface Mandate {
   /** Unique, single-use identifier. Replay of a consumed id is always a reject. */

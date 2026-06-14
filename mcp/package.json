@@ -1,7 +1,7 @@
 {
   "name": "@frankx-ai/payments-mcp",
-  "version": "0.1.0",
-  "description": "Fail-closed, verify-only MCP server for the L5 Payments vertical. Authorizes (AP2 mandate + spend caps) but never moves money. UNAUDITED. NOT FOR LIVE FUNDS.",
+  "version": "0.2.0",
+  "description": "Fail-closed, verify-only MCP server for the L5 Payments vertical. Authorizes (real Ed25519 AP2 mandate + spend caps, durable audit/ledger) but never moves money. UNAUDITED. NOT FOR LIVE FUNDS.",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",

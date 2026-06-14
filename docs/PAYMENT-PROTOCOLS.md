@@ -73,7 +73,7 @@ The invariant across all of it: **no autonomous money movement, ever.** We autho
 
 - Does not implement x402, ACP, or Visa IC settlement.
 - Does not custody funds, hold keys to funds, or touch live card credentials.
-- Does not perform production AP2 cryptographic verification (v0.1 uses a placeholder HMAC check — see the README banner).
+- Performs real **Ed25519** mandate signature verification (v0.2) but not full production AP2 (no issuer-key distribution, revocation, or certificate chain) — see the README banner.
 
 ## Built on SIP
 

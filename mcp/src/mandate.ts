@@ -1,7 +1,7 @@
 /**
  * Mandate verification — the "was this authorized?" gate.
  *
- * ⚠️ v0.1 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
+ * ⚠️ v0.2 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
  *
  * FAIL CLOSED. The first failing gate rejects. A mandate is `verified` only if it
  * is signed, unexpired, amount-matched, and well-formed.
@@ -55,7 +55,7 @@ export function verifyMandate(
     );
   }
 
-  // Gate 1: signed. Placeholder HMAC in v0.1 — see signature.ts.
+  // Gate 1: signed. Real Ed25519 public-key verification in v0.2 — see signature.ts.
   if (!verifySignature(mandate)) {
     return reject(`signature invalid for issuer key '${mandate.issuerKeyId}'`);
   }

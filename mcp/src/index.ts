@@ -2,16 +2,20 @@
 /**
  * Payments MCP — fail-closed, verify-only control surface for the L5 Payments vertical.
  *
- * ⚠️ v0.1 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
+ * ⚠️ v0.2 scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
  *
  * Four tools, all verify-only:
- *   - verify_mandate          "was this authorized?"  (fail closed)
+ *   - verify_mandate          "was this authorized?"  (fail closed, real Ed25519)
  *   - check_spend_cap         per-tx/day/stream caps + single-use replay guard (over cap → escalate)
  *   - record_audit_entry      append-only audit log (audit-first; failed write fails the action)
  *   - require_human_approval  returns a pending-approval object (never auto-approves)
  *
  * There is NO transfer/pay/settle/move_funds tool. None exists, by design.
  * Wire this server (verify-only) to the Payments Queen — never to a worker.
+ *
+ * v0.2: real Ed25519 verification + durable audit/ledger (JSONL). `buildServer`
+ * is exported so tests can connect an in-process SDK client and point state at a
+ * temp dir; `main` wires the stdio transport for production-style use.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -23,10 +27,6 @@ import { verifyMandate } from "./mandate.js";
 import { SpendLedger } from "./spend-cap.js";
 import { AuditLog } from "./audit.js";
 import { requireHumanApproval } from "./approval.js";
-
-// ---- Process-scoped state (in-memory in v0.1) ----
-const ledger = new SpendLedger();
-const audit = new AuditLog();
 
 // ---- Zod schemas (input validation is itself a fail-closed gate) ----
 const mandateSchema = z.object({
@@ -52,11 +52,6 @@ const capsSchema = z.object({
   perStream: z.number().positive(),
 });
 
-const server = new McpServer({
-  name: "payments-mcp",
-  version: "0.1.0",
-});
-
 function textResult(text: string, structured: Record<string, unknown>) {
   return {
     content: [{ type: "text" as const, text }],
@@ -64,7 +59,22 @@ function textResult(text: string, structured: Record<string, unknown>) {
   };
 }
 
-server.registerTool(
+/**
+ * Build the verify-only Payments MCP server with its own durable state. Exported
+ * so tests can run the server in-process (InMemoryTransport) against a temp data
+ * dir, and so `main` can wire it to stdio. Each call gets a fresh ledger + audit
+ * log bound to `opts.dataDir` (defaults to PAYMENTS_DATA_DIR or ./.payments-data).
+ */
+export function buildServer(opts: { dataDir?: string } = {}): McpServer {
+  const ledger = new SpendLedger(opts.dataDir);
+  const audit = new AuditLog(opts.dataDir);
+
+  const server = new McpServer({
+    name: "payments-mcp",
+    version: "0.2.0",
+  });
+
+  server.registerTool(
   "verify_mandate",
   {
     title: "Verify AP2 Mandate",
@@ -163,14 +173,22 @@ server.registerTool(
   },
 );
 
+  return server;
+}
+
 async function main() {
+  const server = buildServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // stderr only — stdout is the MCP stdio channel.
-  console.error("payments-mcp v0.1.0 (verify-only, fail-closed) on stdio — NOT FOR LIVE FUNDS");
+  console.error("payments-mcp v0.2.0 (verify-only, fail-closed, Ed25519 + durable) on stdio — NOT FOR LIVE FUNDS");
 }
 
-main().catch((err) => {
-  console.error("payments-mcp fatal:", err);
-  process.exit(1);
-});
+// Only auto-start the stdio server when run as the entrypoint, not when imported
+// by a test that calls buildServer() against an in-process transport.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error("payments-mcp fatal:", err);
+    process.exit(1);
+  });
+}

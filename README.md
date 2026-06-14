@@ -4,11 +4,11 @@
 
 [![Built on SIP](https://img.shields.io/badge/Built%20on-SIP-blue.svg)](https://github.com/frankxai/Starlight-Intelligence-System)
 
-**Status:** v0.1 — scaffold.
+**Status:** v0.2 — hardened scaffold.
 
 > [!CAUTION]
 > **⚠️ UNAUDITED. NOT FOR LIVE FUNDS.**
-> This is a v0.1 scaffold. The MCP server verifies mandates and enforces spend caps in-memory with a placeholder signature check. It has **not** been security-audited, it does **not** integrate a real cryptographic library or a real settlement rail, and it must **never** be wired to a production payment system or live funds. There is no tool that moves money — and there never will be. Use it to model the control surface, not to settle payments.
+> This is a v0.2 scaffold. The MCP server verifies mandates with **real Ed25519 public-key verification** and keeps **durable** audit + replay/spend state (survives a restart), exercised by an end-to-end MCP integration test. It has still **not** been security-audited, it integrates **no** real settlement rail and **no** AP2 key distribution/revocation, and it must **never** be wired to a production payment system or live funds. There is no tool that moves money — and there never will be. Use it to model the control surface, not to settle payments.
 
 ---
 

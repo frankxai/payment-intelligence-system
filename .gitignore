@@ -13,8 +13,9 @@ npm-debug.log*
 .env.*
 !.env.example
 
-# Audit logs (runtime, never committed)
+# Audit logs + durable payments state (runtime, never committed)
 *.audit.jsonl
+.payments-data/
 private/
 
 # OS / editor

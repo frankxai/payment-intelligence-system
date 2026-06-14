@@ -39,8 +39,8 @@ This repo does not, and will not:
 
 ## Open forks
 
-- **Real crypto verification.** v0.1 uses a placeholder HMAC signature check. A real release swaps in production AP2 mandate verification (e.g. the `google-agentic-commerce/AP2` reference verifier) behind the same `verify_mandate` interface. Until then: NOT FOR LIVE FUNDS.
-- **Persistent audit store.** v0.1 keeps the audit log + consumed-mandate set + spend ledger **in-memory**. A real release persists them (append-only file / DB) so replay protection and daily caps survive a restart.
+- **Real crypto verification.** ✅ v0.2 — `verify_mandate` now does real **Ed25519** public-key verification against an issuer keyring (`mcp/src/signature.ts`), behind the unchanged `verifySignature` interface. Still open: full AP2 key distribution + revocation + certificate chain (e.g. the `google-agentic-commerce/AP2` reference verifier). UNAUDITED until then — NOT FOR LIVE FUNDS.
+- **Persistent audit store.** ✅ v0.2 — the audit log + consumed-mandate set + spend ledger persist to **append-only JSONL** under `PAYMENTS_DATA_DIR` (default `./.payments-data`) and reload on construction, so replay protection + per-stream lifetime totals survive a restart. The per-day window prune is retained. Still open: rotation/retention policy and a DB backend for high volume.
 - **Byzantine consensus seam.** PROTECTION-LAYERS L5 calls for multi-agent consensus on high-value / cross-stream payments (`agentic-payments` pattern). The seam is the `require_human_approval` boundary; consensus verification lands here in a later phase.
 - **Rail adapters.** When downstream settlement is wired, rail adapters (x402, ACP) read our verdict as a precondition — they never bypass `verify_mandate` + `check_spend_cap`.
 

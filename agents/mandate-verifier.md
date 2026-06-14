@@ -21,7 +21,7 @@ model: sonnet
 
 Check the mandate against the four gates, in order. The **first failure rejects**:
 
-1. **Signed** — a signature is present and verifies against the issuer key. (v0.1: placeholder HMAC; real release swaps in production AP2 verification.)
+1. **Signed** — a signature is present and verifies against the issuer key. (v0.2: real Ed25519 public-key verification against an issuer keyring; full AP2 key distribution/revocation is still a later release.)
 2. **Unexpired** — `expiresAt` exists and is in the future. A missing expiry is a reject, not a pass.
 3. **Amount-matched** — `charge.amount` == `mandate.amount` AND `charge.currency` == `mandate.currency`.
 4. **Well-formed** — `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `signature` all present and parseable.
