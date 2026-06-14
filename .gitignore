@@ -1,0 +1,23 @@
+# Node / TypeScript build artifacts
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env / secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Audit logs (runtime, never committed)
+*.audit.jsonl
+private/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
