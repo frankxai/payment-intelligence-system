@@ -1,3 +1,17 @@
+<!-- GITHUB_VISUALS_START -->
+<p align="center">
+  <img src="assets/github/header.svg" alt="Payment Intelligence System - Fail-closed payments governance MCP" width="100%">
+</p>
+
+<details open>
+<summary><strong>How this repo works</strong></summary>
+<p align="center">
+  <img src="assets/github/how-it-works.svg" alt="Payment Intelligence System operating map" width="100%">
+</p>
+</details>
+
+<!-- GITHUB_VISUALS_END -->
+
 # Payment Intelligence System
 
 > The **L5 Payments** vertical of the agentic-income ecosystem: a SIP-style payments-governance vertical plus a fail-closed TypeScript MCP server that authorizes — but never moves — money.
