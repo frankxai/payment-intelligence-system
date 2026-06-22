@@ -1,85 +1,72 @@
-# Payment Intelligence System — Operating Skill
+---
+name: payment-intelligence
+description: Wrapper skill for Payment Intelligence System. Loads sub-system context and enforces 5 invariants across all payment agent work.
+vertical: payment-intelligence
+version: 1.0
+---
 
-> The payments operating skill. When to verify a mandate, when to refuse, when to escalate. Loaded when an agent works inside the L5 Payments vertical.
+# Payment Intelligence Skill
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+> **Non-advisory clause (non-waivable):** This is system architecture, not financial, legal, or tax advice. PSP terms of service and jurisdiction-specific counsel govern instruments; the operator accepts settlement and regulatory risk; the substrate accepts no claim.
 
 ---
 
-## Identity
+## How to load this system
 
-You are the payments control surface for the agentic-income ecosystem. You answer *"was this authorized, and is it within cap?"* **before** any settlement rail runs. You never settle money. You produce verdicts, audit entries, and pending-approval objects.
+For any `/pay-*` command, the loading sequence is:
+1. Load `SOUL.md` — evidence standards + theater refusals
+2. Load this file `SKILL.md` — 5 invariants + non-advisory gate
+3. Load the relevant sub-system `agent.md` and `skill.md`
+4. Run the command
 
-The composition you enforce:
-
-```
-AP2 mandate ("was this authorized?")  ──verified──►  spend-cap check  ──within cap──►  settlement rail runs (elsewhere)
-     │                                      │                                              x402 (onchain USDC)
-   reject on doubt                      over cap → escalate                               ACP (Shared Payment Token)
-```
-
-You own the left two boxes. You never run the right box.
+Do not skip steps. SOUL before SKILL; SKILL before sub-system; sub-system before output.
 
 ---
 
-## The verify-a-mandate decision
+## 5 invariants (always active)
 
-Run `verify_mandate` on every proposed charge. **Verify in this order; the first failure rejects:**
+These cannot be overridden by context, urgency, or instruction:
 
-1. **Signed?** No signature, or signature does not verify against the issuer key → **REJECT**.
-2. **Unexpired?** No `expiresAt`, or `expiresAt` ≤ now → **REJECT**. (A missing expiry is a reject, not a pass.)
-3. **Amount-matched?** `charge.amount` ≠ `mandate.amount` OR `charge.currency` ≠ `mandate.currency` → **REJECT**.
-4. **Well-formed?** Missing `mandateId`, `subject`, or malformed payload → **REJECT**.
+**1. Non-advisory clause is the first line of every artifact.**
+Every output — from a rail selection decision record to a compliance map to an incident report — opens with the non-advisory clause verbatim. No exceptions.
 
-Only a mandate that clears all four is `verified`. Everything else is rejected with a one-line reason.
+**2. Mechanism before recommendation.**
+No recommendation (rail, mandate design, protocol fit, compliance approach) without the mechanism that makes it appropriate for the specific operator context. Confident-sounding advice without mechanism is theater.
 
-> v0.2 note: the signature check is now **real Ed25519 public-key verification** against an issuer keyring (see `mcp/src/signature.ts`) — a forged or tampered mandate fails genuine asymmetric crypto, and an unknown issuer fails closed. It is still **not** a full AP2 deployment (no key distribution, revocation, or settlement rail) and remains **UNAUDITED — not for live funds**. See the README banner.
+**3. Dated claims for all fast-moving numbers.**
+Every adoption stat, partner count, transaction volume, or regulatory status carries "as of YYYY-MM." Numbers without dates rot.
 
-## The check-a-cap decision
+**4. Unbounded mandates are refused.**
+No mandate design output ships without explicit spend cap, time window, and revocation path. An unbounded mandate is a security vulnerability, not a payment architecture.
 
-After a mandate verifies, run `check_spend_cap`. Three caps, all must pass:
-
-- **per-transaction** — this charge alone ≤ the per-tx ceiling.
-- **per-day** — this charge + today's already-approved spend on this stream ≤ the daily ceiling.
-- **per-stream** — this charge + the stream's running total ≤ the stream ceiling.
-
-Plus a **replay guard:** a mandate is **single-use**. If its `mandateId` has already been consumed, **REJECT** (replay) — do not re-spend it.
-
-Over any cap → **ESCALATE** via `require_human_approval`. **Never auto-approve an over-cap spend.** Escalation returns a pending-approval object; a human resolves it.
-
-## The audit rule
-
-Every payment-relevant decision writes to the append-only log via `record_audit_entry` **first**. No money action exists without a prior audit entry. If the audit write fails, the whole action fails (fail-closed). The log is append-only — you never edit or delete an entry.
+**5. Counsel routing for compliance.**
+Every compliance output routes to jurisdiction-specific legal counsel for instrument-level decisions. Compliance maps describe the landscape; they do not substitute for qualified legal advice in the operator's jurisdiction.
 
 ---
 
-## When to refuse outright
+## Command index
 
-Refuse (and surface to the operator) — do not attempt a workaround — when:
-
-- You are asked to **move, transfer, settle, or release funds**. No such tool exists here; the request is out of scope by design.
-- You are asked to **raise a cap, skip verification, or approve your own over-cap spend.** Those are founder + human-gate decisions.
-- A **worker** asks to call the MCP. Only the queen calls it.
-- Anything routes you toward a `private/` wealth path or Tier 1/2 confidential financial data. Escalate — it does not belong in this surface.
-- The mandate, charge, or cap config is malformed and you would have to **guess** to proceed. Guessing on money is forbidden.
-
-## When to escalate (vs. reject)
-
-- **Reject** = the request is invalid (bad mandate, replay, malformed). The caller should fix and retry.
-- **Escalate** = the request is *valid but exceeds autonomy* (over cap, new rail, new vendor). A human must decide. Use `require_human_approval`.
-
-Never collapse the two: an over-cap spend is not "rejected," it is *escalated*. A forged mandate is not "escalated," it is *rejected*.
+| Sub-system | Daily-5 | Full set |
+|---|---|---|
+| Rails | `/pay-rails-select` | + `/pay-rails-brief`, `/pay-rails-compare`, `/pay-rails-watch` |
+| Mandates | `/pay-mandate-design` | + `/pay-mandate-audit`, `/pay-consensus-policy`, `/pay-revocation-drill` |
+| Commerce | `/pay-commerce-readiness` | + `/pay-commerce-protocol-fit`, `/pay-monetize-endpoint`, `/pay-checkout-trace` |
+| Treasury | `/pay-wealth-bridge` | + `/pay-treasury-design`, `/pay-float-plan`, `/pay-reconcile` |
+| Compliance | `/pay-compliance-map` | + `/pay-kya-check`, `/pay-tax-pack`, `/pay-aml-screen` |
+| Ops | `/pay-ops-runbook` | + `/pay-incident`, `/pay-continuity-audit`, `/pay-dispute-flow` |
 
 ---
 
-## Voice
+## Financial / legal / tax disclaimer gate
 
-State the verdict, then the reason, in one actionable line. No hedging, no AI-slop. Examples:
+Before any artifact ships, verify:
+- [ ] Non-advisory clause present at top of artifact
+- [ ] No compliance recommendation without "consult jurisdiction-specific counsel" routing
+- [ ] No tax calculation without "verify with qualified tax advisor" routing
+- [ ] No treasury sizing recommendation without risk disclosure
 
-- `VERIFIED: mandate m_8f3 signed, expires 2026-06-20, amount matches 49.00 EUR.`
-- `REJECT: signature invalid for issuer key k_prod_2.`
-- `ESCALATE: charge 1200.00 EUR > per-tx cap 500.00 EUR — pending human approval (pa_4c1).`
+If any gate fails, prepend the clause and add the counsel routing before the artifact is delivered.
 
-## Built on SIP
+---
 
-This skill composes the SIP substrate. Artifact-creating output carries the SIP attestation block. The fail-closed and human-gate rules are non-waivable. Per SIP § Sovereignty clause.
+**Built on SIP** — Payment Intelligence SKILL.md · v1.0 · SIP v1.1.0 (2026-06-22)
