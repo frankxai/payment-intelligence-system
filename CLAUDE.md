@@ -4,7 +4,7 @@
 
 [![Built on SIP](https://img.shields.io/badge/Built%20on-SIP-blue.svg)](https://github.com/frankxai/Starlight-Intelligence-System)
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Per SIP Layer 1. Declares this vertical's canon posture and defines the load-bearing payments terms.
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 
 ---
 
@@ -19,7 +19,7 @@ If you adopt Arcanea canon, do so via `/luminor-board` (not `/starlight-board`) 
 ## Terms (the vocabulary every payments agent shares)
 
 ### Mandate
-A cryptographically signed proof that a human authorized **this specific purchase for this specific amount**. The AP2 (Agent Payments Protocol) primitive. A mandate answers *"was this authorized?"* — it does **not** move money. Required fields in this system: `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `signature`. A mandate is **single-use** — consumed on approval, never replayable.
+A cryptographically signed proof that a human authorized **this specific purchase for this specific amount**. The AP2 (Agent Payments Protocol) primitive. A mandate answers *"was this authorized?"* — it does **not** move money. Required fields in this system: `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `issuerKeyId`, `signature`. A mandate is **single-use** — consumed on approval, never replayable.
 
 ### Spend-cap
 A ceiling on autonomous spend, enforced at three scopes:

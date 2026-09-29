@@ -28,7 +28,7 @@
 **Status:** v0.2 — hardened scaffold.
 
 > [!CAUTION]
-> **⚠️ UNAUDITED. NOT FOR LIVE FUNDS.**
+> **UNAUDITED. NOT FOR LIVE FUNDS.**
 > This is a v0.2 scaffold. The MCP server verifies mandates with **real Ed25519 public-key verification** and keeps **durable** audit + replay/spend state (survives a restart), exercised by an end-to-end MCP integration test. It has still **not** been security-audited, it integrates **no** real settlement rail and **no** AP2 key distribution/revocation, and it must **never** be wired to a production payment system or live funds. There is no tool that moves money — and there never will be. Use it to model the control surface, not to settle payments.
 
 ---
@@ -81,7 +81,7 @@ This MCP verifies the AP2 mandate **and** enforces spend caps **before** any rai
 | Tool | Job | Fail mode |
 |---|---|---|
 | `verify_mandate` | Reject unsigned / expired / amount-mismatched mandates | **Fail closed** — reject on any doubt |
-| `check_spend_cap` | Per-tx / per-day / per-stream caps; single-use mandate replay guard | Over cap or replay → **escalate**, never auto-approve |
+| `check_spend_cap` | Per-tx / per-day / per-stream caps; single-use mandate replay guard | Over cap → **escalate**, never auto-approve; replay → **reject** |
 | `record_audit_entry` | Append-only audit log | If the log write fails, the action fails |
 | `require_human_approval` | Return a pending-approval object | **Never** auto-approves |
 
@@ -95,7 +95,7 @@ There is no `transfer`, `pay`, `settle`, or `move_funds` tool. None exists, by d
 cd mcp
 npm install
 npm run build      # tsc → dist/
-npm test           # vitest — proves a forged mandate and an over-cap spend are REJECTED
+npm test           # typecheck + node:test — proves a forged mandate is REJECTED and an over-cap spend is ESCALATED
 ```
 
 The server speaks stdio. Wire it (verify-only) to the Payments Queen — never to a worker.

@@ -2,7 +2,7 @@
 
 > Fail-closed, **verify-only** MCP server for the L5 Payments vertical. It authorizes money (AP2 mandate + spend caps) — it never moves money.
 
-**Status:** v0.2 — hardened scaffold. ⚠️ **UNAUDITED. NOT FOR LIVE FUNDS.**
+**Status:** v0.2 — hardened scaffold. **UNAUDITED. NOT FOR LIVE FUNDS.**
 
 This server verifies mandates and enforces spend caps with **real Ed25519 public-key
 verification** (`src/signature.ts`) and **durable JSONL state** for the audit log and
@@ -18,7 +18,10 @@ be wired to a production payment system or live funds. Use it to model the contr
 
 - **Real Ed25519 verification.** The v0.1 placeholder HMAC is gone. An issuer signs the
   canonical mandate payload with an Ed25519 private key; this server verifies against the
-  issuer's **public** key, resolved from a keyring (`issuerKeyId → public key`). A
+  issuer's **public** key, resolved from a keyring (`issuerKeyId → public key`). The
+  payload is `|`-joined with the amount as `toFixed(2)`, so a mandate with a `|` inside
+  `mandateId` / `subject` / `currency` / `issuerKeyId`, or an amount with more than 2
+  decimals, is rejected as malformed (the signature cannot bind it unambiguously). A
   clearly-labeled dev/test keypair (`k_dev`) lets tests mint genuine mandates; additional
   issuer public keys load from env (`PAYMENTS_ISSUER_PUBKEY_<issuerKeyId>` = PEM or
   base64-DER SPKI). A forged or tampered mandate fails real asymmetric verification; an
@@ -30,7 +33,8 @@ be wired to a production payment system or live funds. Use it to model the contr
 - **Durable replay + spend ledger.** Consumed mandates and spend records persist to
   `<dataDir>/ledger.jsonl` and reload on construction, so single-use replay protection and
   per-stream lifetime totals survive a restart. The 24h prune + `streamTotals` optimization
-  are kept.
+  are kept. An unparseable or malformed ledger line stops the server from starting (fail
+  closed) instead of being skipped, because a skipped line would forget a consumed mandate.
 - **Data dir** defaults to `./.payments-data` (override via `PAYMENTS_DATA_DIR` or the
   `buildServer({ dataDir })` / `new AuditLog(dir)` / `new SpendLedger(dir)` argument). The
   dir is gitignored.
@@ -40,7 +44,7 @@ be wired to a production payment system or live funds. Use it to model the contr
 | Tool | Job | Fail mode |
 |---|---|---|
 | `verify_mandate` | Reject unsigned / expired / amount-mismatched / malformed mandates | **Fail closed** — reject on any doubt |
-| `check_spend_cap` | Per-tx / day / stream caps + single-use replay guard | Over cap → **escalate**; replay → **reject** |
+| `check_spend_cap` | Per-tx / day / stream caps + single-use replay guard. A `within-cap` verdict also consumes the mandate, so a repeat call for it is a replay | Over cap → **escalate**; replay → **reject** |
 | `record_audit_entry` | Append-only audit log | Failed write → action fails |
 | `require_human_approval` | Return a pending-approval object | **Never** auto-approves |
 

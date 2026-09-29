@@ -2,7 +2,7 @@
 
 > The payments operating skill. When to verify a mandate, when to refuse, when to escalate. Loaded when an agent works inside the L5 Payments vertical.
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 
 ---
 
@@ -26,10 +26,10 @@ You own the left two boxes. You never run the right box.
 
 Run `verify_mandate` on every proposed charge. **Verify in this order; the first failure rejects:**
 
-1. **Signed?** No signature, or signature does not verify against the issuer key → **REJECT**.
-2. **Unexpired?** No `expiresAt`, or `expiresAt` ≤ now → **REJECT**. (A missing expiry is a reject, not a pass.)
-3. **Amount-matched?** `charge.amount` ≠ `mandate.amount` OR `charge.currency` ≠ `mandate.currency` → **REJECT**.
-4. **Well-formed?** Missing `mandateId`, `subject`, or malformed payload → **REJECT**.
+1. **Well-formed?** Any of `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `issuerKeyId`, `signature` missing or malformed, a `mandateId` that differs from the charge's, a `|` inside `mandateId` / `subject` / `currency` / `issuerKeyId`, or an amount with more than 2 decimal places → **REJECT**. (A missing expiry is a reject, not a pass.)
+2. **Signed?** No signature, or signature does not verify against the issuer key → **REJECT**.
+3. **Unexpired?** `expiresAt` ≤ now → **REJECT**.
+4. **Amount-matched?** `charge.amount` ≠ `mandate.amount` OR `charge.currency` ≠ `mandate.currency` → **REJECT**.
 
 Only a mandate that clears all four is `verified`. Everything else is rejected with a one-line reason.
 
