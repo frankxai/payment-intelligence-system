@@ -77,20 +77,36 @@ export class SpendLedger {
    * mandate id is re-added to the consumed set (replay protection survives restart)
    * and the lifetime per-stream total is reconstructed from ALL events. Recent
    * events also seed `records` so the per-day window is correct after a restart.
+   *
+   * FAIL CLOSED: an unparseable or malformed line throws, so the server does not
+   * start. Skipping it would forget a consumed mandate (allowing its replay) and
+   * undercount the stream total. The file is never rewritten; an operator repairs it.
    */
   private load(): void {
     if (!existsSync(this.path)) return;
     const raw = readFileSync(this.path, "utf8");
-    for (const line of raw.split("\n")) {
-      const trimmed = line.trim();
+    const lines = raw.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = (lines[i] ?? "").trim();
       if (!trimmed) continue;
+      const corrupt = (why: string): Error =>
+        new Error(`ledger ${this.path} line ${i + 1} is ${why}: refusing to start (fail closed)`);
       let ev: LedgerEvent;
       try {
         ev = JSON.parse(trimmed) as LedgerEvent;
       } catch {
-        continue; // skip a corrupt line; durable history is never rewritten
+        throw corrupt("unparseable");
       }
-      if (!ev.mandateId || typeof ev.amount !== "number") continue;
+      if (
+        !ev ||
+        typeof ev.mandateId !== "string" ||
+        !ev.mandateId ||
+        typeof ev.stream !== "string" ||
+        !Number.isFinite(ev.ts) ||
+        !Number.isFinite(ev.amount)
+      ) {
+        throw corrupt("malformed");
+      }
       this.consumed.add(ev.mandateId);
       this.records.push({ ts: ev.ts, amount: ev.amount, stream: ev.stream });
       this.streamTotals.set(
