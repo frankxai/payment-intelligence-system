@@ -18,6 +18,9 @@
  * temp dir; `main` wires the stdio transport for production-style use.
  */
 
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -97,9 +100,11 @@ server.registerTool(
     description:
       "Check a charge against per-transaction / per-day / per-stream caps and the " +
       "single-use replay guard. Over any cap → 'escalate' (NEVER auto-approve). " +
-      "Replayed mandate → 'reject'. Does not move money.",
+      "Replayed mandate → 'reject'. A 'within-cap' verdict consumes the mandate " +
+      "(recorded in the durable ledger), so a second call for the same mandate is a replay. " +
+      "Does not move money.",
     inputSchema: { charge: chargeSchema, caps: capsSchema },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   async ({ charge, caps }) => {
     const result = ledger.check(charge as Charge, caps as SpendCaps);
@@ -184,9 +189,24 @@ async function main() {
   console.error("payments-mcp v0.2.0 (verify-only, fail-closed, Ed25519 + durable) on stdio — NOT FOR LIVE FUNDS");
 }
 
+/**
+ * True when this module is the process entrypoint. `import.meta.url` is a
+ * percent-encoded file URL of the real path, while `process.argv[1]` is the path as
+ * launched, so comparing `file://${argv[1]}` never matched a path containing a space,
+ * a Windows path, or a `bin` symlink, and the server exited silently without starting.
+ */
+export function isEntrypoint(argv1: string | undefined, moduleUrl: string): boolean {
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return false;
+  }
+}
+
 // Only auto-start the stdio server when run as the entrypoint, not when imported
 // by a test that calls buildServer() against an in-process transport.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isEntrypoint(process.argv[1], import.meta.url)) {
   main().catch((err) => {
     console.error("payments-mcp fatal:", err);
     process.exit(1);
