@@ -140,3 +140,21 @@ test("canonicalPayload is signature-excluded and field-ordered", () => {
   };
   assert.equal(canonicalPayload(base), "m_c|s|49.00|EUR|123|k_dev");
 });
+
+test("canonicalPayload and signMandate refuse fields the payload cannot bind unambiguously", () => {
+  const base: Omit<Mandate, "signature"> = {
+    mandateId: "m_c",
+    subject: "s",
+    amount: 49,
+    currency: "EUR",
+    expiresAt: 123,
+    issuerKeyId: "k_dev",
+  };
+  assert.throws(() => canonicalPayload({ ...base, subject: "a|b" }), /reserved separator/);
+  assert.throws(() => signMandate({ ...base, mandateId: "a|b" }), /reserved separator/);
+  assert.throws(() => canonicalPayload({ ...base, amount: 49.001 }), /decimal places/);
+  // verifySignature never throws: an unbindable mandate simply fails closed.
+  const m = devMandate();
+  assert.equal(verifySignature({ ...m, subject: "a|b" }), false);
+  assert.equal(verifySignature({ ...m, amount: 49.004 }), false);
+});

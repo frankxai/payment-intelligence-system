@@ -8,7 +8,7 @@
  */
 
 import type { Charge, Mandate, VerifyResult } from "./types.js";
-import { verifySignature } from "./signature.js";
+import { canonicalizationProblem, verifySignature } from "./signature.js";
 
 const REQUIRED_FIELDS: (keyof Mandate)[] = [
   "mandateId",
@@ -46,6 +46,11 @@ export function verifyMandate(
   }
   if (typeof mandate.expiresAt !== "number" || !Number.isFinite(mandate.expiresAt)) {
     return reject(`malformed mandate: invalid expiresAt '${String(mandate.expiresAt)}'`);
+  }
+  // A mandate whose fields the signed payload cannot bind unambiguously is malformed.
+  const unbindable = canonicalizationProblem(mandate);
+  if (unbindable) {
+    return reject(`malformed mandate: ${unbindable}`);
   }
 
   // The mandate must be the one this charge references.
