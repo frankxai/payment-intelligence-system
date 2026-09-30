@@ -1,124 +1,134 @@
-<!-- GITHUB_VISUALS_START -->
-<p align="center">
-  <img src="assets/github/header.svg" alt="Payment Intelligence System - Fail-closed payments governance MCP." width="100%">
-</p>
-
-<details open>
-<summary><strong>How this repo works</strong></summary>
-<p align="center">
-  <img src="assets/github/how-it-works.svg" alt="Payment Intelligence System operating map" width="100%">
-</p>
-</details>
-
-<details>
-<summary><strong>Build, deploy, verify path</strong></summary>
-<p align="center">
-  <img src="assets/github/build-deploy-verify.svg" alt="Payment Intelligence System build deploy verify path" width="100%">
-</p>
-</details>
-
-<!-- GITHUB_VISUALS_END -->
-
 # Payment Intelligence System
 
-> The **L5 Payments** vertical of the agentic-income ecosystem: a SIP-style payments-governance vertical plus a fail-closed TypeScript MCP server that authorizes — but never moves — money.
+> **Non-advisory clause:** This is system architecture, not financial, legal, or tax advice. PSP terms of service and jurisdiction-specific counsel govern instruments; the operator accepts settlement and regulatory risk; the substrate accepts no claim.
 
-[![Built on SIP](https://img.shields.io/badge/Built%20on-SIP-blue.svg)](https://github.com/frankxai/Starlight-Intelligence-System)
-
-**Status:** v0.2 — hardened scaffold.
-
-> [!CAUTION]
-> **⚠️ UNAUDITED. NOT FOR LIVE FUNDS.**
-> This is a v0.2 scaffold. The MCP server verifies mandates with **real Ed25519 public-key verification** and keeps **durable** audit + replay/spend state (survives a restart), exercised by an end-to-end MCP integration test. It has still **not** been security-audited, it integrates **no** real settlement rail and **no** AP2 key distribution/revocation, and it must **never** be wired to a production payment system or live funds. There is no tool that moves money — and there never will be. Use it to model the control surface, not to settle payments.
+The complete agentic-payments intelligence layer for 2026 — six operational sub-systems covering every dimension of how AI agents pay, get paid, authorize spending, comply with regulation, and recover when things break. Built to the SIP standard, composing under Wealth IS.
 
 ---
 
-## Where this sits
+## Daily-5 commands
 
-This repo is **L5 — Payments** in the agentic-income layer model (`agentic-ops-hub/ECOSYSTEM.md`). It is the control surface that makes money safe: it answers *"was this authorized, and is it within cap?"* **before** any settlement rail runs. Capability lives below it; the swarm runtime runs above it; assurance wraps the whole stack.
-
-```
-L7 ASSURANCE      starlight-evals (red/blue)
-L6 SWARM RUNTIME  starlight-swarm (queens + workers)
-L5 PAYMENTS       payment-intelligence-system  ← YOU ARE HERE
-L4 INCOME ENGINE  agentic-income-skills → agenticincome
-L3 OS FAMILY      agentic-business-os / agentic-creator-os
-L2 CONFIG         agentic-ops-hub
-L1 CAPABILITY     agentic-creator-os (skills, agents, safety)
-L0 SUBSTRATE      Starlight-Intelligence-System (SIP)
-```
-
-The defining invariant, inherited from the ecosystem doctrine: **no autonomous money movement, ever.** Agents draft, verify, and gate; humans approve capital and irreversible actions.
-
----
-
-## Quick map
-
-| File / dir | What |
-|---|---|
-| `README.md` | This file — purpose, placement, status, the warning banner |
-| `CLAUDE.md` | Operating doctrine: fail-closed, human gate on money |
-| `AGENTS.md` | Cross-tool agent card (Claude / Codex / Cursor / Gemini) |
-| `SKILL.md` | The payments operating skill — when to verify, when to refuse |
-| `CANON.md` | Term definitions: mandate, spend-cap, rail, settlement, SPT |
-| `MEMORY.md` | Durable state, commitments, open forks — and what to record |
-| `agents/` | The Payments Queen + 4 workers (markdown agent definitions) |
-| `docs/PAYMENT-PROTOCOLS.md` | June 2026 state of AP2 / x402 / ACP / Visa IC / agentic-payments |
-| `mcp/` | The fail-closed TypeScript MCP server (4 verify-only tools + tests) |
-| `.github/workflows/ci.yml` | Build + test the MCP on Node 24 |
-
----
-
-## The control surface
-
-Money is made safe by composition, not by trust:
-
-1. **AP2 mandate** answers *"was this authorized?"* — a cryptographically signed proof the human approved *this* purchase for *this* amount.
-2. **x402 or ACP** answers *"how does money move?"* — the settlement rail (onchain USDC, or a Shared Payment Token).
-
-This MCP verifies the AP2 mandate **and** enforces spend caps **before** any rail settles. The four tools are all verify-only:
-
-| Tool | Job | Fail mode |
-|---|---|---|
-| `verify_mandate` | Reject unsigned / expired / amount-mismatched mandates | **Fail closed** — reject on any doubt |
-| `check_spend_cap` | Per-tx / per-day / per-stream caps; single-use mandate replay guard | Over cap or replay → **escalate**, never auto-approve |
-| `record_audit_entry` | Append-only audit log | If the log write fails, the action fails |
-| `require_human_approval` | Return a pending-approval object | **Never** auto-approves |
-
-There is no `transfer`, `pay`, `settle`, or `move_funds` tool. None exists, by design.
-
----
-
-## Run the MCP
+The five commands that cover 80% of operator needs. Start here.
 
 ```bash
-cd mcp
-npm install
-npm run build      # tsc → dist/
-npm test           # vitest — proves a forged mandate and an over-cap spend are REJECTED
+/pay-rails-select      # Choose the right payment rail for your context
+/pay-mandate-design    # Design an agent authorization with spend caps + revocation
+/pay-commerce-readiness # Audit your shop or API for agent-payment readiness
+/pay-compliance-map    # Map what law requires in your jurisdiction
+/pay-ops-runbook       # Build your payment operations runbook
 ```
 
-The server speaks stdio. Wire it (verify-only) to the Payments Queen — never to a worker.
+---
+
+## 2026 agentic-payments landscape
+
+```mermaid
+graph TD
+    A[Agent needs to pay] --> B{Select rail}
+    B --> C[HTTP-native\nx402 · L402 · H402 · MPP]
+    B --> D[Card networks\nAgent Pay · Visa IC]
+    B --> E[Crypto/stablecoin\nCoinbase · GOAT]
+    B --> F[Mandate-based\nAP2 · Active Mandates]
+    C --> G[Mandate & authorization\nSD-JWT · Ed25519 · AP2]
+    D --> G
+    E --> G
+    F --> G
+    G --> H[Commerce protocols\nACP · UCP]
+    G --> I[Direct M2M settlement]
+    H --> J[Treasury & reconciliation]
+    I --> J
+    J --> K[Compliance & KYA]
+    K --> L[Ops & continuity]
+    L --> M[Wealth IS DPI ledger]
+```
 
 ---
 
-## The Payments swarm
+## Six sub-systems
 
-A **Payments Queen** (`agents/payments-queen.md`) coordinates four workers and escalates capital + irreversible actions to the founder + human gate:
-
-- `mandate-verifier` — proves the human authorized this charge (AP2)
-- `spend-cap-enforcer` — enforces per-tx / day / stream caps
-- `settlement-auditor` — writes the append-only audit entry; reconciles
-- `fraud-sentinel` — anomaly + replay + injection detection
-
-See `agents/` and `docs/PAYMENT-PROTOCOLS.md`.
-
----
-
-## Built on SIP
-
-Composes the Starlight Intelligence Protocol. Declines vertical canon (see `CANON.md`). Per SIP § Sovereignty clause.
+| Sub-system | Slug | What it covers | Entry command |
+|---|---|---|---|
+| **Rails** | `rails` | Which protocol moves the value: x402, L402, H402, Stripe MPP, Mastercard Agent Pay, Visa IC, AP2, stablecoin, SEPA/ACH | `/pay-rails-select` |
+| **Mandates & Authorization** | `mandates` | How agents are authorized to spend: AP2, Active Mandates, SD-JWT, Ed25519, Byzantine consensus, revocation | `/pay-mandate-design` |
+| **Commerce & Checkout** | `commerce` | Shops selling to agents + agents buying: ACP, UCP, MCP endpoint monetization, checkout traces | `/pay-commerce-readiness` |
+| **Treasury & Wallets** | `treasury` | Where value lives: wallet tiers, float/liquidity, reconciliation, bridge to Wealth IS DPI | `/pay-treasury-design` |
+| **Compliance & Tax** | `compliance` | What law requires: PSD3, MiCA, AI Act, US money-transmission, KYC/AML, KYA, VAT/sales-tax | `/pay-compliance-map` |
+| **Ops & Continuity** | `ops` | What happens when things break: runbooks, disputes/chargebacks, processor outages, deplatform recovery | `/pay-ops-runbook` |
 
 ---
 
-Built by [Frank Riemer](https://frankx.ai). For builders, not consumers.
+## 24 commands
+
+| Rails | Mandates | Commerce | Treasury | Compliance | Ops |
+|---|---|---|---|---|---|
+| `/pay-rails-select` | `/pay-mandate-design` | `/pay-commerce-readiness` | `/pay-treasury-design` | `/pay-compliance-map` | `/pay-ops-runbook` |
+| `/pay-rails-brief` | `/pay-mandate-audit` | `/pay-commerce-protocol-fit` | `/pay-float-plan` | `/pay-kya-check` | `/pay-incident` |
+| `/pay-rails-compare` | `/pay-consensus-policy` | `/pay-monetize-endpoint` | `/pay-reconcile` | `/pay-tax-pack` | `/pay-continuity-audit` |
+| `/pay-rails-watch` | `/pay-revocation-drill` | `/pay-checkout-trace` | `/pay-wealth-bridge` | `/pay-aml-screen` | `/pay-dispute-flow` |
+
+---
+
+## Protocols covered
+
+**HTTP-native rails:** x402 (~165M agent txns as of 2026-06, x402 Foundation with Visa/Mastercard/Stripe/Google/Cloudflare/Coinbase) · L402 (Lightning Network, macaroon credentials) · H402 (independent M2M) · Stripe MPP (Machine Payments Protocol, session-based streaming, Mar 2026)
+
+**Card-network rails:** Mastercard Agent Pay (SD-JWT verifiable intent credentials, Apr 2025) · Mastercard Agent Pay for Machines (M2M mandate layer, Jun 2026) · Visa Intelligent Commerce + Trusted Agent Protocol (RFC 9421 HTTP Message Signatures)
+
+**Mandate frameworks:** Google AP2 (signed mandates, 60+ partners as of 2026-06) · Active Mandates lifecycle (Ed25519, Byzantine consensus, instant revocation)
+
+**Commerce protocols:** ACP (Agentic Commerce Protocol, OpenAI + Stripe) · UCP (Universal Commerce Protocol, Google + Shopify)
+
+**Provider toolkits:** Stripe AI (agent-toolkit + MCP server) · PayPal (30+ MCP tools as of 2026-06) · Coinbase AgentKit · GOAT SDK · Amazon Bedrock AgentCore Payments (preview, Apr 2026) · Nevermined
+
+**Identity & trust:** KYAPay (Skyfire, Know-Your-Agent + JWT) · Visa TAP (RFC 9421) · Forter TACP · Sigilum (PaymanAI)
+
+---
+
+## Composition
+
+Composes under **Wealth IS** as a Domain Sub-Stack:
+- Treasury → **Wealth IS / DPI ledger** (via `/pay-wealth-bridge` → `/wealth-dpi`)
+- Compliance + Mandates → **Wealth IS / Thesis engine** (capital-control layer)
+- Sibling: **Crypto IS** (crypto rail + custody patterns bidirectional)
+
+---
+
+## Architecture
+
+```
+payment-intelligence-system/
+├── README.md          This file
+├── CLAUDE.md          Operating instructions + command index
+├── QUICK-START.md     Status table + 30-60 min entry
+├── SKILL.md           Wrapper skill, 5 invariants, disclaimer gate
+├── SOUL.md            Evidence standards, theater patterns refused
+├── AGENTS.md          Voice map: architect/defender/implementer/overseer
+├── MEMORY.md          Identity, composition map, pre-publish checklist
+├── STACK.md           Composition declarations: Wealth IS + Crypto IS
+├── CANON.md           None required at v1.0
+├── SUB-SYSTEMS.md     Canonical 6-sub-system map with daily-5 + falsifier
+├── PROPOSAL.md        VERTICALS.md registry entry for Starlight board
+├── frameworks/
+│   ├── rail-selection-matrix.md    Rail decision framework
+│   └── mandate-design-checklist.md Mandate design checklist
+├── research/          Per-protocol research docs (verified 2026 facts)
+│   ├── rails/         x402, L402, H402, Stripe MPP, Agent Pay, Visa IC
+│   ├── mandates/      AP2, Active Mandates, KYAPay, a2a-x402
+│   ├── commerce/      ACP, UCP
+│   ├── toolkits/      Provider toolkits landscape
+│   ├── identity/      KYA and trust protocols
+│   └── compliance/    EU 2026, US 2026
+├── rails/             Sub-system: agent.md + skill.md + knowledge.md
+├── mandates/          Sub-system: agent.md + skill.md
+├── commerce/          Sub-system: agent.md + skill.md
+├── treasury/          Sub-system: agent.md + skill.md
+├── compliance/        Sub-system: agent.md + skill.md
+├── ops/               Sub-system: agent.md + skill.md
+└── .claude/commands/  24 /pay-* commands
+```
+
+---
+
+**Built on SIP** — Payment Intelligence System · v1.0 · SIP v1.1.0 (spawned 2026-06-22)
+
+*Composes-with: Wealth IS / DPI ledger · Wealth IS / Thesis engine · Crypto IS (sibling)*
