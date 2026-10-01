@@ -9,7 +9,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -150,5 +150,24 @@ test("DURABILITY: per-stream lifetime total survives a restart", () => {
   // 1800 + 300 = 2100 > 2000 → must escalate after restart.
   assert.equal(r.verdict, "escalate");
   assert.match(r.reason, /over per-stream cap/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("FAIL CLOSED: a corrupt ledger line refuses to load instead of forgetting a consumed mandate", () => {
+  const dir = tmpDataDir();
+  const first = new SpendLedger(dir);
+  first.commit(charge({ mandateId: "m_keep", amount: 100 }), NOW);
+
+  // A torn write, as after a crash mid-append.
+  appendFileSync(first.filePath(), '{"mandateId":"m_torn","ts":1750000000000,"am', "utf8");
+  assert.throws(() => new SpendLedger(dir), /line 2 is unparseable: refusing to start/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("FAIL CLOSED: a well-formed JSON line with missing fields refuses to load", () => {
+  const dir = tmpDataDir();
+  const first = new SpendLedger(dir);
+  appendFileSync(first.filePath(), '{"mandateId":"m_bad","amount":"100"}\n', "utf8");
+  assert.throws(() => new SpendLedger(dir), /line 1 is malformed: refusing to start/);
   rmSync(dir, { recursive: true, force: true });
 });

@@ -2,7 +2,7 @@
 
 > The portable agent card. Same contract whether you run in Claude Code, Codex, Cursor, or Gemini CLI. This file mirrors `CLAUDE.md`; if they disagree, `CLAUDE.md` wins.
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 
 ---
 

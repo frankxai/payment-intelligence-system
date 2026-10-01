@@ -2,13 +2,13 @@
 
 > Per SIP Layer 1. Durable state, commitments, open forks — and what every payments session must record.
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 
 ---
 
 ## Version
 
-`v0.1.0` — scaffold. Not yet tagged. SIP-composing.
+`v0.2.0` — hardened scaffold, matching `mcp/package.json`. Not yet tagged. SIP-composing.
 
 ## Commitments (non-waivable)
 
@@ -39,8 +39,8 @@ This repo does not, and will not:
 
 ## Open forks
 
-- **Real crypto verification.** ✅ v0.2 — `verify_mandate` now does real **Ed25519** public-key verification against an issuer keyring (`mcp/src/signature.ts`), behind the unchanged `verifySignature` interface. Still open: full AP2 key distribution + revocation + certificate chain (e.g. the `google-agentic-commerce/AP2` reference verifier). UNAUDITED until then — NOT FOR LIVE FUNDS.
-- **Persistent audit store.** ✅ v0.2 — the audit log + consumed-mandate set + spend ledger persist to **append-only JSONL** under `PAYMENTS_DATA_DIR` (default `./.payments-data`) and reload on construction, so replay protection + per-stream lifetime totals survive a restart. The per-day window prune is retained. Still open: rotation/retention policy and a DB backend for high volume.
+- **Real crypto verification.** Done in v0.2: `verify_mandate` now does real **Ed25519** public-key verification against an issuer keyring (`mcp/src/signature.ts`), behind the unchanged `verifySignature` interface. Still open: full AP2 key distribution + revocation + certificate chain (e.g. the `google-agentic-commerce/AP2` reference verifier). UNAUDITED until then — NOT FOR LIVE FUNDS.
+- **Persistent audit store.** Done in v0.2: the audit log + consumed-mandate set + spend ledger persist to **append-only JSONL** under `PAYMENTS_DATA_DIR` (default `./.payments-data`) and reload on construction, so replay protection + per-stream lifetime totals survive a restart. The per-day window prune is retained. Still open: rotation/retention policy and a DB backend for high volume.
 - **Byzantine consensus seam.** PROTECTION-LAYERS L5 calls for multi-agent consensus on high-value / cross-stream payments (`agentic-payments` pattern). The seam is the `require_human_approval` boundary; consensus verification lands here in a later phase.
 - **Rail adapters.** When downstream settlement is wired, rail adapters (x402, ACP) read our verdict as a precondition — they never bypass `verify_mandate` + `check_spend_cap`.
 

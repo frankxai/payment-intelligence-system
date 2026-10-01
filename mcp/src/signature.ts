@@ -109,8 +109,38 @@ function publicKeyFor(issuerKeyId: string): KeyObject | undefined {
   return keyring.get(issuerKeyId);
 }
 
+/** Field separator in the canonical payload. It must never appear inside a field. */
+const PAYLOAD_SEPARATOR = "|";
+
+/**
+ * Why this mandate cannot be signed or verified unambiguously, or undefined if it can.
+ *
+ * The payload is a separator-joined string, so two things would otherwise let one
+ * signature cover a different mandate:
+ *   - a `|` inside a string field moves the field boundary, so a signature for
+ *     (mandateId "m1", subject "x|y") also verifies for (mandateId "m1|x", subject "y").
+ *     That is a fresh mandateId, so single-use replay protection would not catch it.
+ *   - the amount is signed as `toFixed(2)`, so any amount that rounds to the signed
+ *     value would verify (a signature for 10.00 also verifies 10.004).
+ * Both are rejected rather than escaped, so no valid existing signature changes.
+ */
+export function canonicalizationProblem(m: Omit<Mandate, "signature">): string | undefined {
+  for (const field of ["mandateId", "subject", "currency", "issuerKeyId"] as const) {
+    const value = m[field];
+    if (typeof value !== "string" || value.includes(PAYLOAD_SEPARATOR)) {
+      return `field '${field}' must be a string without the reserved separator '${PAYLOAD_SEPARATOR}'`;
+    }
+  }
+  if (typeof m.amount !== "number" || Number(m.amount.toFixed(2)) !== m.amount) {
+    return `amount '${String(m.amount)}' has more than 2 decimal places, which the signature cannot bind`;
+  }
+  return undefined;
+}
+
 /** The canonical payload that gets signed. Order is fixed and signature-excluded. */
 export function canonicalPayload(m: Omit<Mandate, "signature">): string {
+  const problem = canonicalizationProblem(m);
+  if (problem) throw new Error(`cannot canonicalize mandate: ${problem}`);
   return [
     m.mandateId,
     m.subject,
@@ -118,7 +148,7 @@ export function canonicalPayload(m: Omit<Mandate, "signature">): string {
     m.currency,
     String(m.expiresAt),
     m.issuerKeyId,
-  ].join("|");
+  ].join(PAYLOAD_SEPARATOR);
 }
 
 /**

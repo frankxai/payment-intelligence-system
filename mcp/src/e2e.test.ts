@@ -15,15 +15,17 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import type { Mandate } from "./types.js";
-import { buildServer } from "./index.js";
+import { buildServer, isEntrypoint } from "./index.js";
 import { signMandate } from "./signature.js";
 
 const HOUR = 60 * 60 * 1000;
@@ -199,5 +201,76 @@ test("E2E: record_audit_entry appends and a missing action FAILS CLOSED", async 
     assert.equal((bad as { isError?: boolean }).isError, true);
   } finally {
     await close();
+  }
+});
+
+test("E2E: check_spend_cap is not advertised read-only (a within-cap verdict consumes the mandate)", async () => {
+  const { client, close } = await connect();
+  try {
+    const { tools } = await client.listTools();
+    const hint = (name: string) => tools.find((t) => t.name === name)?.annotations?.readOnlyHint;
+    assert.equal(hint("check_spend_cap"), false);
+    assert.equal(hint("verify_mandate"), true);
+  } finally {
+    await close();
+  }
+});
+
+test("isEntrypoint matches a launch path with a space and a symlinked launch path", () => {
+  const dir = mkdtempSync(join(tmpdir(), "payments entry "));
+  try {
+    const realDir = join(dir, "real dir");
+    mkdirSync(realDir);
+    const real = join(realDir, "index.js");
+    writeFileSync(real, "");
+    const link = join(dir, "payments-mcp");
+    symlinkSync(real, link);
+    const url = pathToFileURL(real).href; // percent-encodes the space, like import.meta.url
+
+    assert.equal(isEntrypoint(real, url), true);
+    assert.equal(isEntrypoint(link, url), true);
+    assert.equal(isEntrypoint(join(realDir, "other.js"), url), false);
+    assert.equal(isEntrypoint(undefined, url), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("E2E: the stdio server starts when launched through a symlink in a spaced path", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "payments launch "));
+  try {
+    const link = join(dir, "payments-mcp.ts");
+    symlinkSync(fileURLToPath(new URL("./index.ts", import.meta.url)), link);
+    const child = spawn(process.execPath, ["--import", "tsx", link], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)), // resolves `--import tsx` from mcp/node_modules
+      env: { ...process.env, PAYMENTS_DATA_DIR: join(dir, "data") },
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    try {
+      const reply = new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("server did not answer initialize")), 10_000);
+        child.stdout.once("data", (chunk) => {
+          clearTimeout(timer);
+          resolve(String(chunk));
+        });
+        child.once("exit", () => {
+          clearTimeout(timer);
+          reject(new Error("server exited without answering initialize"));
+        });
+      });
+      child.stdin.write(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "t", version: "0" } },
+        }) + "\n",
+      );
+      assert.match(await reply, /"serverInfo":\{"name":"payments-mcp"/);
+    } finally {
+      child.kill();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

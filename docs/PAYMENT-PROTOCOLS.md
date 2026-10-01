@@ -2,7 +2,7 @@
 
 > What the agentic-payments protocol landscape looks like as of June 2026, how the pieces compose, and where each fits the L5 Payments stack. The defining split: **authorization** ("was this allowed?") is separate from **settlement** ("how does money move?"). Our MCP owns authorization gating; it never settles.
 
-**Status:** v0.1 — scaffold. ⚠️ UNAUDITED. NOT FOR LIVE FUNDS.
+**Status:** v0.2 — hardened scaffold. UNAUDITED. NOT FOR LIVE FUNDS.
 Last reviewed: 2026-06-14.
 
 ---
