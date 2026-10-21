@@ -15,7 +15,7 @@
 - **No money-movement tool.** There is no `transfer` / `pay` / `settle` / `move_funds` tool, and there never will be one in this repo. The MCP authorizes; it does not settle.
 - **Fail-closed.** On any doubt, reject. A failed audit write fails the action. Reject-on-doubt is permanent doctrine, not a v0.1 limitation.
 - **Human gate on capital + irreversibility.** Over-cap spend, new rail, new vendor, and any irreversible action are always human-decided (PROTECTION-LAYERS L7). Agents draft and gate; humans approve.
-- **Single-use mandates.** A mandate is consumed on approval. Replay is always a reject.
+- **Single-use mandates.** A mandate is consumed by its first `within-cap` verdict from `check_spend_cap`; an `escalate` or `reject` verdict does not consume it. Replay is always a reject.
 - **Audit-first.** No money-relevant decision exists without a prior append-only audit entry.
 - **Queen-only MCP access.** Only the Payments Queen calls the MCP. Workers report; they never call.
 

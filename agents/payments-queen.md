@@ -38,7 +38,7 @@ model: opus
 | Trigger | Action |
 |---|---|
 | Mandate invalid / expired / amount-mismatch / replay | Reject (worker `mandate-verifier` + `fraud-sentinel` flag; queen renders) |
-| Spend within all caps | Queen may approve the verification verdict (settlement still happens on a downstream rail) |
+| Spend within all caps | Queen may approve the verification verdict. The verdict is not a settlement: moving funds stays a human decision on a downstream rail |
 | Spend **over any cap** | **Escalate** — `require_human_approval`. Never auto-approve. |
 | New rail, new vendor, cap-raise request | **Escalate to founder** — `/starlight-board` + human approval |
 | Irreversible (move funds, rotate key, delete) | **Human gate, always** |

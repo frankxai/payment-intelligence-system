@@ -65,6 +65,7 @@ The defining invariant, inherited from the ecosystem doctrine: **no autonomous m
 | `agents/` | The Payments Queen + 4 workers (markdown agent definitions) |
 | `docs/PAYMENT-PROTOCOLS.md` | June 2026 state of AP2 / x402 / ACP / Visa IC / agentic-payments |
 | `mcp/` | The fail-closed TypeScript MCP server (4 verify-only tools + tests) |
+| `LICENSE` | MIT |
 | `.github/workflows/ci.yml` | Build + test the MCP on Node 24 |
 
 ---
@@ -112,6 +113,12 @@ A **Payments Queen** (`agents/payments-queen.md`) coordinates four workers and e
 - `fraud-sentinel` — anomaly + replay + injection detection
 
 See `agents/` and `docs/PAYMENT-PROTOCOLS.md`.
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). The license permits reuse of the code. It does not change the status above: **UNAUDITED. NOT FOR LIVE FUNDS.** The software is provided "as is", without warranty.
 
 ---
 

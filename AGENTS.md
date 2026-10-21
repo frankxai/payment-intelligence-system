@@ -50,7 +50,7 @@ Wire it **only** to the Payments Queen. Never to a worker. See `mcp/README.md`.
 | Action class | Who decides | Gate |
 |---|---|---|
 | Worker task within stream | Worker → Queen | Queen review |
-| Any payment / settlement | Payments Queen | AP2 mandate verified + spend-cap check + audit entry (MCP, fail-closed) |
+| Any payment authorization verdict (verify mandate, check cap) | Payments Queen | AP2 mandate verified + spend-cap check + audit entry (MCP, fail-closed). The verdict settles nothing; moving funds is the irreversible row below |
 | Spend above cap / new rail / new vendor | Founder | `/starlight-board` + **human approval** |
 | Irreversible (move funds, rotate key, delete) | Founder | **human approval, always** |
 
