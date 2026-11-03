@@ -50,6 +50,12 @@ be wired to a production payment system or live funds. Use it to model the contr
 
 There is no `transfer` / `pay` / `settle` / `move_funds` tool. None exists, by design.
 
+### What the server does not enforce
+
+- **Cap ceilings are inputs.** `check_spend_cap` compares a charge to the `caps` its caller passes. The server holds no cap configuration, so keeping ceilings founder-set is the Payments Queen's rule, not a server check.
+- **Call order is the Queen's procedure.** The tools do not require each other: `check_spend_cap` runs without a prior `verify_mandate` or `record_audit_entry`, and a `within-cap` verdict consumes the mandate whether or not it was verified. Only `within-cap` consumes a mandate; `escalate` and `reject` do not.
+- **No approval state.** `require_human_approval` returns a pending object and stores nothing. No code resolves it, so a human-approved over-cap charge is settled and de-duplicated outside this server.
+
 ## Run
 
 ```bash

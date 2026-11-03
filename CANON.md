@@ -19,7 +19,7 @@ If you adopt Arcanea canon, do so via `/luminor-board` (not `/starlight-board`) 
 ## Terms (the vocabulary every payments agent shares)
 
 ### Mandate
-A cryptographically signed proof that a human authorized **this specific purchase for this specific amount**. The AP2 (Agent Payments Protocol) primitive. A mandate answers *"was this authorized?"* — it does **not** move money. Required fields in this system: `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `issuerKeyId`, `signature`. A mandate is **single-use** — consumed on approval, never replayable.
+A cryptographically signed proof that a human authorized **this specific purchase for this specific amount**. The AP2 (Agent Payments Protocol) primitive. A mandate answers *"was this authorized?"* — it does **not** move money. Required fields in this system: `mandateId`, `subject`, `amount`, `currency`, `expiresAt`, `issuerKeyId`, `signature`. A mandate is **single-use** — consumed by its first `within-cap` verdict from `check_spend_cap` (an `escalate` or `reject` verdict does not consume it), never replayable.
 
 ### Spend-cap
 A ceiling on autonomous spend, enforced at three scopes:
