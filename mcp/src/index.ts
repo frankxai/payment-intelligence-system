@@ -25,9 +25,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import type { Charge, Mandate, SpendCaps } from "./types.js";
+import type { Charge, Mandate, RequestedCaps, SpendCaps } from "./types.js";
 import { verifyMandate } from "./mandate.js";
-import { SpendLedger } from "./spend-cap.js";
+import { SpendLedger, loadSpendCaps, narrowCaps } from "./spend-cap.js";
 import { AuditLog } from "./audit.js";
 import { requireHumanApproval } from "./approval.js";
 
@@ -49,11 +49,12 @@ const chargeSchema = z.object({
   stream: z.string().min(1).max(100),
 });
 
-const capsSchema = z.object({
-  perTransaction: z.number().positive(),
-  perDay: z.number().positive(),
-  perStream: z.number().positive(),
-});
+// Optional, and only ever tighter: the operator's caps come from server configuration.
+const requestedCapsSchema = z.object({
+  perTransaction: z.number().positive().optional(),
+  perDay: z.number().positive().optional(),
+  perStream: z.number().positive().optional(),
+}).strict();
 
 function textResult(text: string, structured: Record<string, unknown>) {
   return {
@@ -68,7 +69,9 @@ function textResult(text: string, structured: Record<string, unknown>) {
  * dir, and so `main` can wire it to stdio. Each call gets a fresh ledger + audit
  * log bound to `opts.dataDir` (defaults to PAYMENTS_DATA_DIR or ./.payments-data).
  */
-export function buildServer(opts: { dataDir?: string } = {}): McpServer {
+export function buildServer(opts: { dataDir?: string; caps?: SpendCaps } = {}): McpServer {
+  // The limits belong to the operator. An agent that could pass its own caps could lift them.
+  const serverCaps = loadSpendCaps(opts.caps);
   const ledger = new SpendLedger(opts.dataDir);
   const audit = new AuditLog(opts.dataDir);
 
@@ -98,16 +101,20 @@ server.registerTool(
   {
     title: "Check Spend Cap",
     description:
-      "Check a charge against per-transaction / per-day / per-stream caps and the " +
-      "single-use replay guard. Over any cap → 'escalate' (NEVER auto-approve). " +
+      "Check a charge against the operator's per-transaction / per-day / per-stream caps " +
+      "(server configuration, in one currency) and the single-use replay guard. `caps` is " +
+      "optional and can only tighten them. No configured caps or another currency → 'reject'. " +
+      "Over any cap → 'escalate' (NEVER auto-approve). " +
       "Replayed mandate → 'reject'. A 'within-cap' verdict consumes the mandate " +
       "(recorded in the durable ledger), so a second call for the same mandate is a replay. " +
       "Does not move money.",
-    inputSchema: { charge: chargeSchema, caps: capsSchema },
+    inputSchema: { charge: chargeSchema, caps: requestedCapsSchema.optional() },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   async ({ charge, caps }) => {
-    const result = ledger.check(charge as Charge, caps as SpendCaps);
+    const result = serverCaps
+      ? ledger.check(charge as Charge, narrowCaps(serverCaps, caps as RequestedCaps | undefined))
+      : { verdict: "reject" as const, reason: "no server-side spend caps configured (set PAYMENTS_SPEND_CAPS or PAYMENTS_SPEND_CAPS_FILE)" };
     // Consume the mandate only on a clean within-cap verdict (single-use).
     if (result.verdict === "within-cap") {
       ledger.commit(charge as Charge);

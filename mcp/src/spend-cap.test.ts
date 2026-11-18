@@ -14,11 +14,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Charge, SpendCaps } from "./types.js";
-import { SpendLedger } from "./spend-cap.js";
+import { SpendLedger, loadSpendCaps, narrowCaps } from "./spend-cap.js";
 
 const NOW = 1_750_000_000_000;
 
 const caps: SpendCaps = {
+  currency: "EUR",
   perTransaction: 500,
   perDay: 1000,
   perStream: 2000,
@@ -170,4 +171,32 @@ test("FAIL CLOSED: a well-formed JSON line with missing fields refuses to load",
   appendFileSync(first.filePath(), '{"mandateId":"m_bad","amount":"100"}\n', "utf8");
   assert.throws(() => new SpendLedger(dir), /line 1 is malformed: refusing to start/);
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("caps: invalid or missing caps reject the charge instead of meaning 'no limit'", () => {
+  const { ledger } = newLedger();
+  for (const bad of [undefined, { ...caps, perTransaction: Number.NaN }, { ...caps, perDay: 0 }, { ...caps, currency: "eur" }]) {
+    const res = ledger.check(charge(), bad as SpendCaps, NOW);
+    assert.equal(res.verdict, "reject", JSON.stringify(bad));
+  }
+});
+
+test("caps: a charge in another currency is rejected", () => {
+  const { ledger } = newLedger();
+  const res = ledger.check(charge({ currency: "KWD" }), caps, NOW);
+  assert.equal(res.verdict, "reject");
+  assert.match(res.reason, /caps are in EUR, charge is in KWD/);
+});
+
+test("caps: narrowCaps only ever lowers a cap", () => {
+  assert.deepEqual(narrowCaps(caps, { perTransaction: 1e9, perDay: 10 }), { ...caps, perDay: 10 });
+  assert.deepEqual(narrowCaps(caps, { perStream: -5 }), caps);
+});
+
+test("caps: loadSpendCaps reads env, refuses invalid config, and returns null when unset", () => {
+  assert.equal(loadSpendCaps(undefined, {}), null);
+  assert.deepEqual(loadSpendCaps(undefined, { PAYMENTS_SPEND_CAPS: JSON.stringify(caps) }), caps);
+  assert.throws(() => loadSpendCaps(undefined, { PAYMENTS_SPEND_CAPS: "{nope" }), /not valid JSON/);
+  assert.throws(() => loadSpendCaps(undefined, { PAYMENTS_SPEND_CAPS: JSON.stringify({ ...caps, perStream: "lots" }) }), /perStream must be a positive number/);
+  assert.throws(() => loadSpendCaps({ ...caps, currency: "" }), /3-letter uppercase currency/);
 });

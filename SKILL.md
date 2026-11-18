@@ -37,7 +37,7 @@ Only a mandate that clears all four is `verified`. Everything else is rejected w
 
 ## The check-a-cap decision
 
-After a mandate verifies, run `check_spend_cap`. Three caps, all must pass:
+After a mandate verifies, run `check_spend_cap`. The caps are the operator's, configured on the server in one currency. You cannot raise them: the optional `caps` argument only tightens a cap for one check. A charge in another currency, or a server with no caps configured, is a **REJECT**. Three caps, all must pass:
 
 - **per-transaction** — this charge alone ≤ the per-tx ceiling.
 - **per-day** — this charge + today's already-approved spend on this stream ≤ the daily ceiling.

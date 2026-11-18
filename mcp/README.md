@@ -35,6 +35,12 @@ be wired to a production payment system or live funds. Use it to model the contr
   per-stream lifetime totals survive a restart. The 24h prune + `streamTotals` optimization
   are kept. An unparseable or malformed ledger line stops the server from starting (fail
   closed) instead of being skipped, because a skipped line would forget a consumed mandate.
+- **Operator spend caps.** Caps are server configuration, never agent input:
+  `PAYMENTS_SPEND_CAPS='{"currency":"EUR","perTransaction":500,"perDay":1000,"perStream":2000}'`,
+  or the same JSON in the file named by `PAYMENTS_SPEND_CAPS_FILE`, or `buildServer({ caps })`.
+  An invalid configuration stops the server from starting. With no caps configured,
+  `check_spend_cap` rejects every charge. A charge in another currency is rejected. The tool's
+  optional `caps` argument can only lower a cap for one check, never raise it.
 - **Data dir** defaults to `./.payments-data` (override via `PAYMENTS_DATA_DIR` or the
   `buildServer({ dataDir })` / `new AuditLog(dir)` / `new SpendLedger(dir)` argument). The
   dir is gitignored.
