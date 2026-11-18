@@ -20,10 +20,65 @@ import {
   readFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import type { CapResult, Charge, SpendCaps } from "./types.js";
+import type { CapResult, Charge, RequestedCaps, SpendCaps } from "./types.js";
 import { resolveDataDir } from "./audit.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const CAP_FIELDS = ["perTransaction", "perDay", "perStream"] as const;
+
+/** Why a cap set cannot be enforced, or null when it can. */
+export function capsProblem(caps: unknown): string | null {
+  if (!caps || typeof caps !== "object") return "no spend caps configured";
+  const c = caps as Record<string, unknown>;
+  if (typeof c.currency !== "string" || !/^[A-Z]{3}$/.test(c.currency)) {
+    return `spend caps need a 3-letter uppercase currency, got '${String(c.currency)}'`;
+  }
+  for (const f of CAP_FIELDS) {
+    const v = c[f];
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return `spend cap ${f} must be a positive number, got '${String(v)}'`;
+  }
+  return null;
+}
+
+/**
+ * Load the operator's caps: explicit value, else PAYMENTS_SPEND_CAPS (JSON), else
+ * PAYMENTS_SPEND_CAPS_FILE. Returns null when none is configured; throws on an
+ * invalid configuration so a misconfigured server does not start.
+ */
+export function loadSpendCaps(explicit?: SpendCaps, env: NodeJS.ProcessEnv = process.env): SpendCaps | null {
+  let raw: unknown = explicit;
+  let from = "buildServer({ caps })";
+  if (raw === undefined && env.PAYMENTS_SPEND_CAPS) {
+    from = "PAYMENTS_SPEND_CAPS";
+    raw = parseCaps(env.PAYMENTS_SPEND_CAPS, from);
+  } else if (raw === undefined && env.PAYMENTS_SPEND_CAPS_FILE) {
+    from = `PAYMENTS_SPEND_CAPS_FILE (${env.PAYMENTS_SPEND_CAPS_FILE})`;
+    raw = parseCaps(readFileSync(env.PAYMENTS_SPEND_CAPS_FILE, "utf8"), from);
+  }
+  if (raw === undefined) return null;
+  const problem = capsProblem(raw);
+  if (problem) throw new Error(`${from}: ${problem}`);
+  const c = raw as SpendCaps;
+  return { currency: c.currency, perTransaction: c.perTransaction, perDay: c.perDay, perStream: c.perStream };
+}
+
+function parseCaps(text: string, from: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${from}: not valid JSON`);
+  }
+}
+
+/** Server caps tightened by a caller's request. A request can lower a cap, never raise it. */
+export function narrowCaps(server: SpendCaps, requested: RequestedCaps = {}): SpendCaps {
+  const out: SpendCaps = { ...server };
+  for (const f of CAP_FIELDS) {
+    const v = requested[f];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[f] = Math.min(server[f], v);
+  }
+  return out;
+}
 const LEDGER_FILE = "ledger.jsonl";
 
 interface SpendRecord {
@@ -162,6 +217,17 @@ export class SpendLedger {
 
     if (!Number.isFinite(charge.amount) || charge.amount <= 0) {
       return { verdict: "reject", reason: `invalid charge amount '${String(charge.amount)}'` };
+    }
+
+    // Caps that cannot be enforced are a reject, never an implicit "no limit".
+    const problem = capsProblem(caps);
+    if (problem) return { verdict: "reject", reason: problem };
+    // Amounts in different currencies cannot be compared or summed against one cap.
+    if (charge.currency !== caps.currency) {
+      return {
+        verdict: "reject",
+        reason: `currency mismatch: caps are in ${caps.currency}, charge is in ${charge.currency}`,
+      };
     }
 
     // Per-transaction cap.

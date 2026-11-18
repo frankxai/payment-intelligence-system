@@ -48,9 +48,11 @@ function devMandate(overrides: Partial<Mandate> = {}): Mandate {
 }
 
 /** Connect a fresh in-process client+server pair against a temp data dir. */
-async function connect(): Promise<{ client: Client; dir: string; close: () => Promise<void> }> {
+const SERVER_CAPS = { currency: "EUR", perTransaction: 500, perDay: 1000, perStream: 2000 };
+
+async function connect(caps: typeof SERVER_CAPS | null = SERVER_CAPS): Promise<{ client: Client; dir: string; close: () => Promise<void> }> {
   const dir = mkdtempSync(join(tmpdir(), "payments-e2e-"));
-  const server = buildServer({ dataDir: dir });
+  const server = buildServer({ dataDir: dir, caps: caps ?? undefined });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "payments-e2e", version: "0.2.0" });
   await Promise.all([
@@ -138,7 +140,6 @@ test("E2E: an over-cap charge → escalate (never auto-approved)", async () => {
       name: "check_spend_cap",
       arguments: {
         charge: { mandateId: "m_overcap", amount: 5000, currency: "EUR", stream: "payments" },
-        caps: { perTransaction: 500, perDay: 1000, perStream: 2000 },
       },
     });
     assert.equal(verdictOf(res), "escalate");
@@ -150,15 +151,14 @@ test("E2E: an over-cap charge → escalate (never auto-approved)", async () => {
 test("E2E: a replayed mandate → reject", async () => {
   const { client, close } = await connect();
   try {
-    const caps = { perTransaction: 500, perDay: 1000, perStream: 2000 };
     const charge = { mandateId: "m_e2e_replay", amount: 100, currency: "EUR", stream: "payments" };
 
     // First spend consumes the mandate (within cap).
-    const first = await client.callTool({ name: "check_spend_cap", arguments: { charge, caps } });
+    const first = await client.callTool({ name: "check_spend_cap", arguments: { charge } });
     assert.equal(verdictOf(first), "within-cap");
 
     // Replay of the same mandate id is rejected.
-    const replay = await client.callTool({ name: "check_spend_cap", arguments: { charge, caps } });
+    const replay = await client.callTool({ name: "check_spend_cap", arguments: { charge } });
     assert.equal(verdictOf(replay), "reject");
   } finally {
     await close();
@@ -272,5 +272,64 @@ test("E2E: the stdio server starts when launched through a symlink in a spaced p
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("E2E: an agent cannot raise the operator's caps by passing its own", async () => {
+  const { client, close } = await connect();
+  try {
+    const res = await client.callTool({
+      name: "check_spend_cap",
+      arguments: {
+        charge: { mandateId: "m_loosen", amount: 5000, currency: "EUR", stream: "payments" },
+        caps: { perTransaction: 1e12, perDay: 1e12, perStream: 1e12 },
+      },
+    });
+    assert.equal(verdictOf(res), "escalate", "the server cap of 500 still applies");
+  } finally {
+    await close();
+  }
+});
+
+test("E2E: a caller can tighten the caps for one check", async () => {
+  const { client, close } = await connect();
+  try {
+    const res = await client.callTool({
+      name: "check_spend_cap",
+      arguments: {
+        charge: { mandateId: "m_tighten", amount: 100, currency: "EUR", stream: "payments" },
+        caps: { perTransaction: 50 },
+      },
+    });
+    assert.equal(verdictOf(res), "escalate");
+  } finally {
+    await close();
+  }
+});
+
+test("E2E: no configured caps or another currency → reject, and nothing is consumed", async () => {
+  const saved = { a: process.env.PAYMENTS_SPEND_CAPS, b: process.env.PAYMENTS_SPEND_CAPS_FILE };
+  delete process.env.PAYMENTS_SPEND_CAPS;
+  delete process.env.PAYMENTS_SPEND_CAPS_FILE;
+  const unconfigured = await connect(null);
+  try {
+    const res = await unconfigured.client.callTool({
+      name: "check_spend_cap",
+      arguments: { charge: { mandateId: "m_nocaps", amount: 1, currency: "EUR", stream: "payments" } },
+    });
+    assert.equal(verdictOf(res), "reject");
+  } finally {
+    await unconfigured.close();
+    if (saved.a !== undefined) process.env.PAYMENTS_SPEND_CAPS = saved.a;
+    if (saved.b !== undefined) process.env.PAYMENTS_SPEND_CAPS_FILE = saved.b;
+  }
+  const { client, close } = await connect();
+  try {
+    const charge = { mandateId: "m_kwd", amount: 100, currency: "KWD", stream: "payments" };
+    assert.equal(verdictOf(await client.callTool({ name: "check_spend_cap", arguments: { charge } })), "reject");
+    const eur = await client.callTool({ name: "check_spend_cap", arguments: { charge: { ...charge, currency: "EUR" } } });
+    assert.equal(verdictOf(eur), "within-cap", "the rejected currency check did not consume the mandate");
+  } finally {
+    await close();
   }
 });

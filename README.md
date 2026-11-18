@@ -82,7 +82,7 @@ This MCP verifies the AP2 mandate **and** enforces spend caps **before** any rai
 | Tool | Job | Fail mode |
 |---|---|---|
 | `verify_mandate` | Reject unsigned / expired / amount-mismatched mandates | **Fail closed** — reject on any doubt |
-| `check_spend_cap` | Per-tx / per-day / per-stream caps; single-use mandate replay guard | Over cap → **escalate**, never auto-approve; replay → **reject** |
+| `check_spend_cap` | Per-tx / per-day / per-stream caps set by the operator on the server (one currency); single-use mandate replay guard | Over cap → **escalate**, never auto-approve; replay, no configured caps or another currency → **reject** |
 | `record_audit_entry` | Append-only audit log | If the log write fails, the action fails |
 | `require_human_approval` | Return a pending-approval object | **Never** auto-approves |
 

@@ -42,11 +42,19 @@ export interface Charge {
 }
 
 /** Spend ceilings. Over ANY of these → escalate, never auto-approve. */
+/**
+ * Operator policy, configured on the server. Never taken from the agent being limited.
+ * Every amount is in `currency`; a charge in any other currency is refused.
+ */
 export interface SpendCaps {
+  currency: string;
   perTransaction: number;
   perDay: number;
   perStream: number;
 }
+
+/** What a caller may send: tighter limits only. Each present field can only lower the server cap. */
+export type RequestedCaps = Partial<Pick<SpendCaps, "perTransaction" | "perDay" | "perStream">>;
 
 export type Verdict = "verified" | "reject" | "within-cap" | "escalate";
 
